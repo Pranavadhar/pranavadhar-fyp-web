@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Predictive Maintenance Dashboard</title>
+
+  <!-- Fonts & Icons -->
+  <link
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    rel="stylesheet"
+  />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    /* Reset & Base */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+      color: #1a3c34;
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Intro Overlay */
+    .intro-overlay {
+      position: fixed;
+      top: 0;
+      left: 240px;
+      width: calc(100% - 240px);
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 3rem;
+      font-weight: 700;
+      color: #fff;
+      z-index: 9999;
+      animation: fadeOut 5s ease-in-out forwards, colorChange 5s infinite alternate;
+    }
+
+    @keyframes fadeOut {
+      0% { opacity: 1; }
+      100% { opacity: 0; visibility: hidden; }
+    }
+
+    @keyframes colorChange {
+      0% { color: #4caf50; }
+      25% { color: #81c784; }
+      50% { color: #a5d6a7; }
+      75% { color: #66bb6a; }
+      100% { color: #388e3c; }
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 240px;
+      background: linear-gradient(180deg, #2e7d32, #1b5e20);
+      color: #fff;
+      padding: 2rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 100;
+      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .sidebar h2 {
+      font-weight: 700;
+      font-size: 1.6rem;
+      text-align: center;
+      color: #e8f5e9;
+    }
+
+    .sidebar ul {
+      list-style: none;
+      padding: 0;
+      width: 100%;
+    }
+
+    .sidebar ul li {
+      margin-bottom: 1rem;
+    }
+
+    .sidebar ul li a {
+      color: #e8f5e9;
+      font-weight: 500;
+      font-size: 1.1rem;
+      text-decoration: none;
+      display: block;
+      padding: 0.8rem;
+      border-radius: 8px;
+      transition: background 0.3s ease, transform 0.2s ease;
+    }
+
+    .sidebar ul li a:hover,
+    .sidebar ul li a:focus {
+      background: #43a047;
+      transform: translateX(5px);
+    }
+
+    /* Main Content */
+    .main-content {
+      margin-left: 240px;
+      padding: 2.5rem;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    /* Header */
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid #a5d6a7;
+    }
+
+    .dashboard-header h1 {
+      font-weight: 700;
+      font-size: 2.2rem;
+      color: #1a3c34;
+    }
+
+    .clock {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #2e7d32;
+      background: #e8f5e9;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+    }
+
+    /* Iframe Container */
+    .iframe-container {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
+      margin-top: 1rem;
+    }
+
+    .iframe-container iframe {
+      width: 100%;
+      height: 600px;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      border: none;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .iframe-container iframe:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Responsive Tweaks */
+    @media (max-width: 1200px) {
+      .iframe-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .main-content {
+        margin-left: 0;
+        padding: 1.5rem;
+      }
+
+      .sidebar {
+        width: 100%;
+        height: auto;
+        position: static;
+      }
+
+      .intro-overlay {
+        left: 0;
+        width: 100%;
+      }
+
+      .iframe-container {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Intro Overlay -->
+  <div class="intro-overlay">Prediction Loading...</div>
+
+  <div class="sidebar">
+    <h2>Predictive Maintenance of EVs</h2>
+    <ul>
+      <li><a href="index.html">Dashboard</a></li>
+      <li><a href="prediction.html">Prediction</a></li>
+    </ul>
+  </div>
+
+  <div class="main-content">
+    <div class="dashboard-header">
+      <h1>Prediction</h1>
+      <div class="clock" id="clock"></div>
+    </div>
+
+    <div class="iframe-container">
+      <iframe
+        src="https://predictive-maintenance-of-electric-vehicles-reg.streamlit.app/?embed=true"
+        frameborder="0"
+      ></iframe>
+      <iframe
+        src="https://predictive-maintenance-of-electric-vehicles.streamlit.app/?embed=true"
+        frameborder="0"
+      ></iframe>
+    </div>
+  </div>
+
+  <script src="index.js" type="module"></script>
+
+  <script>
+    // Real-time clock update
+    function updateClock() {
+      const clock = document.getElementById('clock');
+      const now = new Date();
+      const hours = now.getHours().toString().padStart(2, '0');
+      const minutes = now.getMinutes().toString().padStart(2, '0');
+      const seconds = now.getSeconds().toString().padStart(2, '0');
+      clock.textContent = `${hours}:${minutes}:${seconds}`;
+    }
+
+    setInterval(updateClock, 1000);
+    updateClock();
+  </script>
+</body>
+</html>

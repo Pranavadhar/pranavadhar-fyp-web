@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Predictive Maintenance Dashboard</title>
+
+  <!-- Fonts & Icons -->
+  <link
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    rel="stylesheet"
+  />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Chart.js and JustGage -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/raphael@2.3.0/raphael.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/justgage@1.3.5/justgage.min.js"></script>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"></script>
+
+  <style>
+    /* Reset & Base */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+      color: #1a3c34;
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Intro Overlay */
+    .intro-overlay {
+      position: fixed;
+      top: 0;
+      left: 240px;
+      width: calc(100% - 240px);
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 3rem;
+      font-weight: 700;
+      color: #fff;
+      z-index: 9999;
+      animation: fadeOut 5s ease-in-out forwards, colorChange 5s infinite alternate;
+    }
+
+    @keyframes fadeOut {
+      0% { opacity: 1; }
+      100% { opacity: 0; visibility: hidden; }
+    }
+
+    @keyframes colorChange {
+      0% { color: #4caf50; }
+      25% { color: #81c784; }
+      50% { color: #a5d6a7; }
+      75% { color: #66bb6a; }
+      100% { color: #388e3c; }
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 240px;
+      background: linear-gradient(180deg, #2e7d32, #1b5e20);
+      color: #fff;
+      padding: 2rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 100;
+      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .sidebar h2 {
+      font-weight: 700;
+      font-size: 1.6rem;
+      text-align: center;
+      color: #e8f5e9;
+    }
+
+    .sidebar ul {
+      list-style: none;
+      padding: 0;
+      width: 100%;
+    }
+
+    .sidebar ul li {
+      margin-bottom: 1rem;
+    }
+
+    .sidebar ul li a {
+      color: #e8f5e9;
+      font-weight: 500;
+      font-size: 1.1rem;
+      text-decoration: none;
+      display: block;
+      padding: 0.8rem;
+      border-radius: 8px;
+      transition: background 0.3s ease, transform 0.2s ease;
+    }
+
+    .sidebar ul li a:hover,
+    .sidebar ul li a:focus {
+      background: #43a047;
+      transform: translateX(5px);
+    }
+
+    /* Main Content */
+    .main-content {
+      margin-left: 240px;
+      padding: 2.5rem;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    /* Header */
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid #a5d6a7;
+    }
+
+    .dashboard-header h1 {
+      font-weight: 700;
+      font-size: 2.2rem;
+      color: #1a3c34;
+    }
+
+    .clock {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #2e7d32;
+      background: #e8f5e9;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+    }
+
+    /* Cards Container */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.5rem;
+    }
+
+    .cards.secondary {
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    .cards.single {
+      grid-template-columns: 1fr;
+    }
+
+    .cards.gauges {
+      grid-template-columns: repeat(2, 1fr);
+      justify-content: space-between;
+      gap: 1.5rem;
+    }
+
+    /* Individual Card */
+    .card {
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      min-height: 200px;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .card h3 {
+      font-weight: 600;
+      font-size: 1.2rem;
+      color: #2e7d32;
+      margin-bottom: 0.5rem;
+    }
+
+    .card p {
+      font-weight: 700;
+      font-size: 1.8rem;
+      color: #1a3c34;
+      margin: 0.5rem 0;
+    }
+
+    /* Thermometer UI for Temperature Cards */
+    .thermometer-container {
+      width: 30px;
+      height: 100px;
+      position: relative;
+      margin: 1rem auto;
+    }
+
+    .thermometer {
+      width: 100%;
+      height: 100%;
+      border: 2px solid #2e7d32;
+      border-radius: 15px;
+      background: #e8f5e9;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .thermometer-fill {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      background: linear-gradient(0deg, #d32f2f, #f44336);
+      transition: height 0.5s ease;
+    }
+
+    .thermometer-bulb {
+      width: 40px;
+      height: 40px;
+      background: #f44336;
+      border-radius: 50%;
+      position: absolute;
+      bottom: -15px;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 2px solid #2e7d32;
+    }
+
+    /* Battery Icon */
+    #batteryIcon {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      margin: 1rem 0;
+    }
+
+    #batteryContainer {
+      width: 70px;
+      height: 30px;
+      border: 2px solid #1a3c34;
+      border-radius: 6px;
+      position: relative;
+      background: #e8f5e9;
+      box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.2);
+    }
+
+    #batteryLevel {
+      height: 100%;
+      border-radius: 4px 0 0 4px;
+      background: #4caf50;
+      transition: width 0.4s ease, background-color 0.4s ease;
+    }
+
+    #batteryCap {
+      width: 8px;
+      height: 18px;
+      background: #1a3c34;
+      position: absolute;
+      right: -10px;
+      top: 6px;
+      border-radius: 3px;
+    }
+
+    #batteryPercentText {
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: #1a3c34;
+    }
+
+    /* Gauges */
+    #motorTempGauge,
+    #batteryTempGauge,
+    #powerGauge,
+    #rpmGauge {
+      width: 180px !important;
+      height: 100px !important;
+    }
+
+    /* Timer Style */
+    #countdownTimer {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #d32f2f;
+    }
+
+    /* Responsive Tweaks */
+    @media (max-width: 1200px) {
+      .cards,
+      .cards.secondary {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .main-content {
+        margin-left: 0;
+        padding: 1.5rem;
+      }
+
+      .cards,
+      .cards.secondary,
+      .cards.gauges {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        width: 100%;
+        height: auto;
+        position: static;
+      }
+
+      .intro-overlay {
+        left: 0;
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Intro Overlay -->
+  <div class="intro-overlay">Dashboard Loading...</div>
+
+  <div class="sidebar">
+    <h2>Predictive Maintenance of EVs</h2>
+    <ul>
+      <li><a href="index.html">Dashboard</a></li>
+      <li><a href="prediction.html">Prediction</a></li>
+    </ul>
+  </div>
+
+  <div class="main-content">
+    <audio id="alertSound" src="alert.mp3" preload="auto"></audio>
+
+    <div class="dashboard-header">
+      <h1>Dashboard</h1>
+      <div class="clock" id="clock"></div>
+    </div>
+
+    <!-- First Row: Speed, Power, Battery Temp, Motor Temp -->
+    <div class="cards">
+      <div class="card">
+        <h3>Speed of Motor (RPM)</h3>
+        <p id="fspeed">120</p>
+        <div id="rpmGaugeContainer">
+          <div id="rpmGauge"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Power (mW)</h3>
+        <p id="carPower">350</p>
+        <div id="powerGaugeContainer">
+          <div id="powerGauge"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Temperature of Battery (°C)</h3>
+        <p id="ftemp">40.0</p>
+        <div class="thermometer-container">
+          <div class="thermometer">
+            <div class="thermometer-fill" id="batteryTempFill" style="height: 40%"></div>
+          </div>
+          <div class="thermometer-bulb"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Temperature of Motor (°C)</h3>
+        <p id="tempBat">25.0</p>
+        <div class="thermometer-container">
+          <div class="thermometer">
+            <div class="thermometer-fill" id="motorTempFill" style="height: 25%"></div>
+          </div>
+          <div class="thermometer-bulb"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Second Row: SOC, SOH, Voltage, Current -->
+    <div class="cards secondary">
+      <div class="card">
+        <h3>State of Charge of Battery</h3>
+        <div id="batteryIcon">
+          <div id="batteryContainer">
+            <div id="batteryLevel" style="width: 78%; background: #4caf50;"></div>
+            <div id="batteryCap"></div>
+          </div>
+          <div id="batteryPercentText">78%</div>
+        </div>
+        <p id="socBat" style="display: none;">78</p>
+      </div>
+      <div class="card">
+        <h3>State of Health of Battery</h3>
+        <p id="soh">95</p>
+      </div>
+      <div class="card">
+        <h3>Voltage (V)</h3>
+        <p id="fvol">2.90039</p>
+      </div>
+      <div class="card">
+        <h3>Current (mA)</h3>
+        <p id="fcur">-2.013</p>
+      </div>
+    </div>
+
+    <!-- Other Cards -->
+    <div class="cards single">
+      <div class="card">
+        <h3>Distance from Obstacle</h3>
+        <p id="distCol">120</p>
+      </div>
+    </div>
+
+    <div class="cards single">
+      <div class="card">
+        <h3>Battery Service Recommended</h3>
+        <p id="batSer">Yes</p>
+      </div>
+      <div class="card">
+        <h3>Vehicle Overheating</h3>
+        <p id="vehOver">Stop Vehicle, Auto Shutting Down in <span id="countdownTimer">60</span> seconds</p>
+      </div>
+    </div>
+
+    <div class="cards single">
+      <div class="card">
+        <h3>Check Cooling Fan</h3>
+        <p id="colFan">Cooling System Service Recommended</p>
+      </div>
+    </div>
+
+    <div class="cards gauges">
+      <div class="card">
+        <h3>Motor Temp Gauge</h3>
+        <div id="motorTempGauge"></div>
+      </div>
+      <div class="card">
+        <h3>Battery Temp Gauge</h3>
+        <div id="batteryTempGauge"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase Initialization -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDF88C2xzAkyQYzG2S4XQrMTpmY_7GYw6I",
+      authDomain: "heisenberg-b4608.firebaseapp.com",
+      databaseURL: "https://heisenberg-b4608-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "heisenberg-b4608",
+      storageBucket: "heisenberg-b4608.firebasestorage.app",
+      messagingSenderId: "707937071538",
+      appId: "1:707937071538:web:08de581e16ea1b41e474ab",
+      measurementId: "G-SFTF7YFB8F"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const speedRef = ref(db, 'parameters/rpm');
+    onValue(speedRef, (snapshot) => {
+      const speed = snapshot.val();
+      document.getElementById('fspeed').textContent = speed;
+    });
+
+    const powerRef = ref(db, 'parameters/power');
+    onValue(powerRef, (snapshot) => {
+      const power = snapshot.val();
+      document.getElementById('carPower').textContent = power;
+    });
+  </script>
+
+  <script src="index.js" type="module"></script>
+
+  <!-- Gauges and Logic -->
+  <script>
+    let batteryGauge = new JustGage({
+      id: "batteryTempGauge",
+      value: 0,
+      min: 0,
+      max: 100,
+      title: "Battery Temperature",
+      label: "°C",
+      levelColors: ["#4caf50", "#81c784", "#ffca28", "#d32f2f"]
+    });
+
+    let motorGauge = new JustGage({
+      id: "motorTempGauge",
+      value: 0,
+      min: 0,
+      max: 100,
+      title: "Motor Temperature",
+      label: "°C",
+      levelColors: ["#4caf50", "#81c784", "#ffca28", "#d32f2f"]
+    });
+
+    let powerGauge = new JustGage({
+      id: "powerGauge",
+      value: 0,
+      min: 0,
+      max: 10000,
+      title: "Power",
+      label: "mW",
+      levelColors: ["#4caf50", "#81c784", "#ffca28", "#d32f2f"]
+    });
+
+    let rpmGauge = new JustGage({
+      id: "rpmGauge",
+      value: 0,
+      min: 0,
+      max: 200,
+      title: "Speed",
+      label: "RPM",
+      levelColors: ["#4caf50", "#81c784", "#ffca28", "#d32f2f"]
+    });
+
+    function getColorArrayForValue(value, type) {
+      if (type === 'power') {
+        if (value <= 2500) return ["#4caf50"];
+        if (value <= 5000) return ["#81c784"];
+        if (value <= 7500) return ["#ffca28"];
+        return ["#d32f2f"];
+      } else if (type === 'rpm') {
+        if (value <= 50) return ["#4caf50"];
+        if (value <= 100) return ["#81c784"];
+        if (value <= 150) return ["#ffca28"];
+        return ["#d32f2f"];
+      } else {
+        if (value <= 32) return ["#4caf50"];
+        if (value <= 35) return ["#81c784"];
+        if (value <= 40) return ["#ffca28"];
+        return ["#d32f2f"];
+      }
+    }
+
+    function updateGauges() {
+      let batteryTemp = parseFloat(document.getElementById("ftemp").textContent);
+      let motorTemp = parseFloat(document.getElementById("tempBat").textContent);
+      let power = parseFloat(document.getElementById("carPower").textContent);
+      let rpm = parseFloat(document.getElementById("fspeed").textContent);
+
+      if (!isNaN(motorTemp)) {
+        motorGauge.config.levelColors = getColorArrayForValue(motorTemp, 'temperature');
+        motorGauge.refresh(motorTemp);
+        document.getElementById("motorTempFill").style.height = `${Math.min(motorTemp, 100)}%`;
+      }
+
+      if (!isNaN(batteryTemp)) {
+        batteryGauge.config.levelColors = getColorArrayForValue(batteryTemp, 'temperature');
+        batteryGauge.refresh(batteryTemp);
+        document.getElementById("batteryTempFill").style.height = `${Math.min(batteryTemp, 100)}%`;
+      }
+
+      if (!isNaN(power)) {
+        powerGauge.config.levelColors = getColorArrayForValue(power, 'power');
+        powerGauge.refresh(power);
+      }
+
+      if (!isNaN(rpm)) {
+        rpmGauge.config.levelColors = getColorArrayForValue(rpm, 'rpm');
+        rpmGauge.refresh(rpm);
+      }
+
+      let countdownValue = 60;
+      let countdownInterval = null;
+      let countdownStarted = false;
+      let isCooldownActive = false;
+      const countdownTimerElement = document.getElementById('countdownTimer');
+
+      function startCountdown() {
+        if (countdownStarted) return;
+        countdownStarted = true;
+        countdownInterval = setInterval(() => {
+          countdownTimerElement.textContent = countdownValue;
+          countdownValue--;
+          if (countdownValue < 0) {
+            clearInterval(countdownInterval);
+            countdownInterval = null;
+            countdownStarted = false;
+            alert("Vehicle is overheating! Please stop immediately.");
+          }
+        }, 1000);
+      }
+
+      function resetCountdown() {
+        if (countdownInterval) {
+          clearInterval(countdownInterval);
+          countdownInterval = null;
+        }
+        countdownValue = 60;
+        countdownTimerElement.textContent = countdownValue;
+        countdownStarted = false;
+      }
+
+      function checkTemperatureAndStartCountdown() {
+        const motorTemp = parseFloat(document.getElementById("tempBat").textContent);
+        const batteryTemp = parseFloat(document.getElementById("ftemp").textContent);
+
+        if (!countdownStarted && (motorTemp > 45 || batteryTemp > 45)) {
+          if (!isCooldownActive) {
+            isCooldownActive = true;
+            startCountdown();
+          }
+        }
+
+        if (countdownStarted && motorTemp <= 45 && batteryTemp <= 45) {
+          resetCountdown();
+          isCooldownActive = false;
+        }
+      }
+
+      checkTemperatureAndStartCountdown();
+    }
+
+    setInterval(updateGauges, 2000);
+
+    let soc = parseInt(document.getElementById("socBat").textContent);
+    let batteryLevel = document.getElementById("batteryLevel");
+    let batteryText = document.getElementById("batteryPercentText");
+
+    if (!isNaN(soc)) {
+      batteryLevel.style.width = soc + "%";
+      batteryText.textContent = soc + "%";
+      if (soc > 50) {
+        batteryLevel.style.background = "#4caf50";
+      } else if (soc >= 30) {
+        batteryLevel.style.background = "#ffca28";
+      } else {
+        batteryLevel.style.background = "#d32f2f";
+      }
+    }
+
+    // Real-time clock update
+    function updateClock() {
+      const clock = document.getElementById('clock');
+      const now = new Date();
+      const hours = now.getHours().toString().padStart(2, '0');
+      const minutes = now.getMinutes().toString().padStart(2, '0');
+      const seconds = now.getSeconds().toString().padStart(2, '0');
+      clock.textContent = `${hours}:${minutes}:${seconds}`;
+    }
+
+    setInterval(updateClock, 1000);
+    updateClock();
+  </script>
+</body>
+</html>
