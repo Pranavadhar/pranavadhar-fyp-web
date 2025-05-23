@@ -1,3 +1,3 @@
 ## FYPWeb
 # Predictive Maintenance of Electric Vehicles
-<a href = "pranavsuriya-sr.github.io/FYPWeb/">Link</a>
+<a href = "https://pranavadhar-fyp-web.vercel.app/">Link</a>
